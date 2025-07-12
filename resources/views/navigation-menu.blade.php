@@ -22,6 +22,9 @@
                             {{ __('Categories') }}
                         </x-nav-link>
                     @endif
+                    <x-nav-link href="{{ route('user.documents') }}" :active="request()->routeIs('user.documents')">
+                            {{ __('Documents') }}
+                        </x-nav-link>
                 </div>
             </div>
 
@@ -156,6 +159,9 @@
                     {{ __('Categories') }}
                 </x-responsive-nav-link>
             @endif
+            <x-responsive-nav-link href="{{ route('user.documents') }}" :active="request()->routeIs('user.documents')">
+                    {{ __('Documents') }}
+            </x-responsive-nav-link>
         </div>
 
         <!-- Responsive Settings Options -->

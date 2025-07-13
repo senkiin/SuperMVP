@@ -74,7 +74,9 @@
     <x-section-border />
     <div class="mt-10 sm:mt-0">
         <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Tus Documentos</h2>
-        <div class="mt-4 flex flex-col">
+        
+        <!-- El polling se añade aquí para refrescar la lista automáticamente -->
+        <div class="mt-4 flex flex-col" wire:poll.5s>
             <div class="overflow-x-auto">
                 <div class="inline-block min-w-full py-2 align-middle">
                     <div class="shadow overflow-hidden border-b border-gray-200 dark:border-gray-700 sm:rounded-lg">

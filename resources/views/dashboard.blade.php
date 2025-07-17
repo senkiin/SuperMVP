@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div class="h-[calc(100vh-4.1rem)]">
+    <div class="h-screen overflow-hidden">
         @livewire('chat-page')
     </div>
 </x-app-layout>

@@ -9,8 +9,12 @@ use App\Models\ChatConversation;
 class ChatHistory extends Component
 {
     public $conversations;
+    public $confirmingDeletion = null; // ID of conversation being confirmed for deletion
 
-    protected $listeners = ['conversationCreated' => 'loadConversations'];
+    protected $listeners = [
+        'conversationCreated' => 'loadConversations',
+        'conversationUpdated' => 'loadConversations'
+    ];
 
     public function mount()
     {
@@ -34,6 +38,50 @@ class ChatHistory extends Component
         ]);
         $this->loadConversations();
         $this->selectConversation($newConv->id);
+    }
+
+    /**
+     * Confirms deletion of a conversation.
+     */
+    public function confirmDelete($conversationId)
+    {
+        $this->confirmingDeletion = $conversationId;
+    }
+
+    /**
+     * Cancels the deletion confirmation.
+     */
+    public function cancelDelete()
+    {
+        $this->confirmingDeletion = null;
+    }
+
+    /**
+     * Deletes a conversation and all its messages.
+     */
+    public function deleteConversation($conversationId)
+    {
+        $conversation = Auth::user()->conversations()->findOrFail($conversationId);
+        
+        // Check if this is the currently active conversation
+        $wasActive = request()->session()->get('active_conversation_id') == $conversationId;
+        
+        $conversation->delete();
+        
+        $this->confirmingDeletion = null;
+        $this->loadConversations();
+        
+        // If we deleted the active conversation, select another one or clear
+        if ($wasActive) {
+            $latest = $this->conversations->first();
+            if ($latest) {
+                $this->selectConversation($latest->id);
+            } else {
+                $this->dispatch('conversationCleared');
+            }
+        }
+        
+        $this->dispatch('show-toast', message: 'Conversation deleted!', type: 'success');
     }
 
     public function render()

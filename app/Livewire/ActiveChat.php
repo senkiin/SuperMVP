@@ -19,7 +19,11 @@ class ActiveChat extends Component
     public $showSettings = false;
     public $settings = [];
 
-    protected $listeners = ['conversationSelected'];
+    // Title editing
+    public $isEditingTitle = false;
+    public $editingTitle = '';
+
+    protected $listeners = ['conversationSelected', 'conversationCleared'];
 
     public function mount()
     {
@@ -33,6 +37,10 @@ class ActiveChat extends Component
     {
         $this->activeConversation = ChatConversation::findOrFail($conversationId);
         $this->messages = $this->activeConversation->messages->map(fn($msg) => $msg->toArray())->toArray();
+        
+        // Reset title editing state
+        $this->isEditingTitle = false;
+        $this->editingTitle = $this->activeConversation->title;
         
         // Get companies here to set a default value if needed
         $companies = Auth::user()->userCompanies;
@@ -55,6 +63,48 @@ class ActiveChat extends Component
         if ($latest) {
             $this->conversationSelected($latest->id);
         }
+    }
+
+    /**
+     * Starts editing the conversation title.
+     */
+    public function startEditingTitle()
+    {
+        if (!$this->activeConversation) return;
+        
+        $this->isEditingTitle = true;
+        $this->editingTitle = $this->activeConversation->title;
+    }
+
+    /**
+     * Saves the edited title.
+     */
+    public function saveTitle()
+    {
+        if (!$this->activeConversation) return;
+
+        $this->validate([
+            'editingTitle' => 'required|string|max:255',
+        ]);
+
+        $this->activeConversation->update([
+            'title' => $this->editingTitle,
+        ]);
+
+        $this->isEditingTitle = false;
+        
+        // Notify chat history to refresh
+        $this->dispatch('conversationUpdated');
+        $this->dispatch('show-toast', message: 'Title updated!', type: 'success');
+    }
+
+    /**
+     * Cancels title editing.
+     */
+    public function cancelEditingTitle()
+    {
+        $this->isEditingTitle = false;
+        $this->editingTitle = $this->activeConversation?->title ?? '';
     }
     
     /**
@@ -88,6 +138,17 @@ class ActiveChat extends Component
         $this->dispatch('messages-updated');
 
         // The real call to your API that triggers the n8n workflow would go here.
+    }
+
+    /**
+     * Clears the active conversation when it's deleted.
+     */
+    public function conversationCleared()
+    {
+        $this->activeConversation = null;
+        $this->messages = [];
+        $this->isEditingTitle = false;
+        $this->editingTitle = '';
     }
 
     /**

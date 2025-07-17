@@ -21,10 +21,17 @@
                         <x-nav-link href="{{ route('admin.categories') }}" :active="request()->routeIs('admin.categories')">
                             {{ __('Categories') }}
                         </x-nav-link>
+                          <x-nav-link href="{{ route('admin.form-fields') }}" :active="request()->routeIs('admin.form-fields')">
+                            {{ __('Gestionar Campos') }}
+                        </x-nav-link>
                     @endif
                     <x-nav-link href="{{ route('user.documents') }}" :active="request()->routeIs('user.documents')">
                             {{ __('Documents') }}
-                        </x-nav-link>
+                    </x-nav-link>
+                    <!-- Dentro del div con la clase "hidden space-x-8 sm:-my-px sm:ms-10 sm:flex" -->
+                    <x-nav-link href="{{ route('companies.index') }}" :active="request()->routeIs('companies.index')">
+                        {{ __('Empresas') }}
+                    </x-nav-link>
                 </div>
             </div>
 

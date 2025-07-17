@@ -11,6 +11,8 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
 
 class User extends Authenticatable
 {
@@ -114,4 +116,15 @@ class User extends Authenticatable
         }
         return ($this->tokens_used + $tokensToSpend) <= $this->plan->token_limit;
     }
+
+    public function userCompanies(): HasMany
+    {
+        return $this->hasMany(UserCompany::class);
+    }
+    public function conversations(): HasMany
+    {
+        return $this->hasMany(ChatConversation::class);
+    }
+
+
 }

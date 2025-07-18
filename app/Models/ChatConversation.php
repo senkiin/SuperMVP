@@ -33,5 +33,3 @@ class ChatConversation extends Model
         return $this->hasMany(ChatMessage::class);
     }
 }
-
-

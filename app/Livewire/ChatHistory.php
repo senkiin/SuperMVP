@@ -18,21 +18,42 @@ class ChatHistory extends Component
 
     public function mount()
     {
-        $this->loadConversations();
+        // Only load conversations if user is authenticated
+        if (Auth::check()) {
+            $this->loadConversations();
+        } else {
+            $this->conversations = collect(); // Empty collection for guests
+        }
     }
 
     public function loadConversations()
     {
+        // Guard against non-authenticated users
+        if (!Auth::check()) {
+            $this->conversations = collect();
+            return;
+        }
+
         $this->conversations = Auth::user()->conversations()->latest()->get();
     }
 
     public function selectConversation($conversationId)
     {
+        // Only allow if user is authenticated
+        if (!Auth::check()) {
+            return;
+        }
+
         $this->dispatch('conversationSelected', $conversationId);
     }
 
     public function newConversation()
     {
+        // Only allow if user is authenticated
+        if (!Auth::check()) {
+            return;
+        }
+
         $newConv = Auth::user()->conversations()->create([
             'title' => 'New Conversation ' . now()->format('H:i'),
         ]);
@@ -45,6 +66,10 @@ class ChatHistory extends Component
      */
     public function confirmDelete($conversationId)
     {
+        if (!Auth::check()) {
+            return;
+        }
+
         $this->confirmingDeletion = $conversationId;
     }
 
@@ -61,16 +86,20 @@ class ChatHistory extends Component
      */
     public function deleteConversation($conversationId)
     {
+        if (!Auth::check()) {
+            return;
+        }
+
         $conversation = Auth::user()->conversations()->findOrFail($conversationId);
-        
+
         // Check if this is the currently active conversation
         $wasActive = request()->session()->get('active_conversation_id') == $conversationId;
-        
+
         $conversation->delete();
-        
+
         $this->confirmingDeletion = null;
         $this->loadConversations();
-        
+
         // If we deleted the active conversation, select another one or clear
         if ($wasActive) {
             $latest = $this->conversations->first();
@@ -80,7 +109,7 @@ class ChatHistory extends Component
                 $this->dispatch('conversationCleared');
             }
         }
-        
+
         $this->dispatch('show-toast', message: 'Conversation deleted!', type: 'success');
     }
 

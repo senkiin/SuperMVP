@@ -80,7 +80,7 @@ Route::post('/chat/receive', function (Request $request) {
 // En api.php - Actualizar la ruta guest-chat/receive
 
 // Ruta principal para recibir respuestas de n8n
-Route::post('/guest-chat/receive', function (Request $request) {
+Route::post('/guest-chat/receive', function(Request $request) {
     // Log completo de la petición
     Log::info('=== N8N CALLBACK RECEIVED ===', [
         'all_data' => $request->all(),
@@ -129,6 +129,9 @@ Route::post('/guest-chat/receive', function (Request $request) {
         if ($messageId) {
             $specificKey = "ai_response_{$sessionId}_{$messageId}";
             Cache::put($specificKey, $content, $ttl);
+
+            // También marcar este mensaje como procesado
+            Cache::put("processed_{$messageId}", true, $ttl);
         }
 
         // También guardar como objeto completo para debugging
@@ -162,6 +165,7 @@ Route::post('/guest-chat/receive', function (Request $request) {
             'session_id' => $sessionId,
             'message_id' => $messageId
         ]);
+
     } catch (\Exception $e) {
         Log::error('Callback processing failed', [
             'error' => $e->getMessage(),
@@ -172,7 +176,7 @@ Route::post('/guest-chat/receive', function (Request $request) {
 })->name('api.guest-chat.receive');
 
 // Ruta de polling para obtener respuestas
-Route::get('/guest-chat/poll/{sessionId}/{messageId?}', function ($sessionId, $messageId = null) {
+Route::get('/guest-chat/poll/{sessionId}/{messageId?}', function($sessionId, $messageId = null) {
     Log::info('Polling request', [
         'session_id' => $sessionId,
         'message_id' => $messageId
@@ -214,7 +218,7 @@ Route::get('/guest-chat/poll/{sessionId}/{messageId?}', function ($sessionId, $m
 })->name('api.guest-chat.poll');
 
 // Ruta de test para verificar que n8n puede alcanzar el servidor
-Route::get('/guest-chat/test', function () {
+Route::get('/guest-chat/test', function() {
     return response()->json([
         'status' => 'ok',
         'timestamp' => now()->toDateTimeString(),
@@ -223,7 +227,7 @@ Route::get('/guest-chat/test', function () {
 })->name('api.guest-chat.test');
 
 // Ruta para enviar mensajes a n8n (mejorada)
-Route::post('/guest-chat/send', function (Request $request) {
+Route::post('/guest-chat/send', function(Request $request) {
     $request->validate([
         'message' => 'required|string|max:2000',
         'session_id' => 'required|string',
@@ -273,6 +277,7 @@ Route::post('/guest-chat/send', function (Request $request) {
                 'details' => $response->body()
             ], $response->status());
         }
+
     } catch (\Exception $e) {
         Log::error('N8N webhook error', [
             'error' => $e->getMessage(),

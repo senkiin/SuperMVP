@@ -58,53 +58,58 @@ class GuestChat extends Component
         $this->sendToN8N($userMessage, $messageId);
     }
 
-   private function sendToN8N($userMessage, $messageId)
-{
-    $webhookUrl = env('N8N_CHAT_GUEST_WEBHOOK_URL');
+    private function sendToN8N($userMessage, $messageId)
+    {
+        $webhookUrl = env('N8N_CHAT_GUEST_WEBHOOK_URL');
 
-    if (!$webhookUrl) {
-        Log::error('N8N webhook URL not configured');
-        $this->addErrorMessage('Chat service not configured. Please check your .env file.');
-        return;
-    }
-
-    Log::info('=== SENDING TO N8N ===', [
-        'url' => $webhookUrl,
-        'message' => $userMessage,
-        'session_id' => $this->sessionId,
-        'message_id' => $messageId
-    ]);
-
-    // SIEMPRE iniciar polling
-    $this->dispatch('start-polling', messageId: $messageId);
-
-    // Enviar en background usando dispatch
-    dispatch(function () use ($webhookUrl, $userMessage, $messageId) {
-        try {
-            Http::timeout(30) // Dar más tiempo a n8n
-                ->withHeaders([
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json'
-                ])
-                ->post($webhookUrl, [
-                    'query' => $userMessage,
-                    'session_id' => $this->sessionId,
-                    'message_id' => $messageId,
-                    'callback_url' => route('api.guest-chat.receive'),
-                    'timestamp' => now()->toDateTimeString()
-                ]);
-
-            Log::info('N8N webhook completed');
-        } catch (\Exception $e) {
-            Log::warning('N8N webhook error (but response may still arrive via callback)', [
-                'error' => $e->getMessage()
-            ]);
+        if (!$webhookUrl) {
+            Log::error('N8N webhook URL not configured');
+            $this->addErrorMessage('Chat service not configured. Please check your .env file.');
+            return;
         }
-    })->afterResponse(); // Ejecutar después de enviar respuesta al usuario
-}
+
+        Log::info('=== SENDING TO N8N ===', [
+            'url' => $webhookUrl,
+            'message' => $userMessage,
+            'session_id' => $this->sessionId,
+            'message_id' => $messageId
+        ]);
+
+        // SIEMPRE iniciar polling
+        $this->dispatch('start-polling', messageId: $messageId);
+
+        // Enviar en background usando dispatch
+        dispatch(function () use ($webhookUrl, $userMessage, $messageId) {
+            try {
+                Http::timeout(30) // Dar más tiempo a n8n
+                    ->withHeaders([
+                        'Content-Type' => 'application/json',
+                        'Accept' => 'application/json'
+                    ])
+                    ->post($webhookUrl, [
+                        'query' => $userMessage,
+                        'session_id' => $this->sessionId,
+                        'message_id' => $messageId,
+                        'callback_url' => route('api.guest-chat.receive'),
+                        'timestamp' => now()->toDateTimeString()
+                    ]);
+
+                Log::info('N8N webhook completed');
+            } catch (\Exception $e) {
+                Log::warning('N8N webhook error (but response may still arrive via callback)', [
+                    'error' => $e->getMessage()
+                ]);
+            }
+        })->afterResponse(); // Ejecutar después de enviar respuesta al usuario
+    }
 
     public function checkForResponse($messageId = null)
     {
+        // Prevenir chequeos si no estamos esperando respuesta
+        if (!$this->loading) {
+            return false;
+        }
+
         Log::info('Checking for response', [
             'session_id' => $this->sessionId,
             'message_id' => $messageId
@@ -119,6 +124,11 @@ class GuestChat extends Component
         $cacheKeys[] = "ai_response_{$this->sessionId}";
         $cacheKeys[] = "full_response_{$this->sessionId}";
 
+        // También buscar con el messageId en full_response
+        if ($messageId) {
+            $cacheKeys[] = "full_response_{$this->sessionId}_{$messageId}";
+        }
+
         foreach ($cacheKeys as $cacheKey) {
             $response = Cache::get($cacheKey);
 
@@ -128,8 +138,15 @@ class GuestChat extends Component
                     'content_preview' => substr(is_string($response) ? $response : json_encode($response), 0, 100)
                 ]);
 
-                // Limpiar cache
-                Cache::forget($cacheKey);
+                // Limpiar TODAS las posibles claves de cache para evitar duplicados
+                foreach ($cacheKeys as $key) {
+                    Cache::forget($key);
+                }
+
+                // Marcar este mensaje como procesado
+                if ($messageId) {
+                    Cache::put("processed_{$messageId}", true, 300);
+                }
 
                 // Procesar respuesta
                 $content = $response;
@@ -149,6 +166,15 @@ class GuestChat extends Component
                     } catch (\Exception $e) {
                         // Si falla el decode, usar el string tal cual
                     }
+                }
+
+                // Solo verificar duplicados por contenido
+                $lastMessage = collect($this->messages)->where('sender', 'ai')->last();
+                if ($lastMessage && $lastMessage['content'] === $content) {
+                    Log::warning('Duplicate message detected by content, skipping');
+                    $this->loading = false;
+                    $this->dispatch('stop-polling', messageId: $messageId);
+                    return false;
                 }
 
                 // Agregar mensaje de IA

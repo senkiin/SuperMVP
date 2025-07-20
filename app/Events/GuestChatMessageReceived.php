@@ -4,24 +4,23 @@ namespace App\Events;
 
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PresenceChannel;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
 class GuestChatMessageReceived implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+   use Dispatchable, InteractsWithSockets, SerializesModels;
 
+    public $content;
     public $sessionId;
-    public $message;
 
-    /**
-     * Create a new event instance.
-     */
-    public function __construct($sessionId, $message)
+    public function __construct($content, $sessionId)
     {
+        $this->content = $content;
         $this->sessionId = $sessionId;
-        $this->message = $message;
     }
 
     /**
@@ -30,7 +29,7 @@ class GuestChatMessageReceived implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new Channel('guest-chat.' . $this->sessionId),
+            new Channel('guest-chat-' . $this->sessionId),
         ];
     }
 
@@ -39,7 +38,7 @@ class GuestChatMessageReceived implements ShouldBroadcast
      */
     public function broadcastAs(): string
     {
-        return 'message.received';
+        return 'guest-message-received';
     }
 
     /**
@@ -48,7 +47,7 @@ class GuestChatMessageReceived implements ShouldBroadcast
     public function broadcastWith(): array
     {
         return [
-            'message' => $this->message,
+            'content' => $this->content,
         ];
     }
 }

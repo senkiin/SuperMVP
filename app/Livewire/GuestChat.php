@@ -1,9 +1,11 @@
 <?php
 
+// Actualización del componente app/Livewire/GuestChat.php
 namespace App\Livewire;
 
 use Livewire\Component;
 use Illuminate\Support\Facades\Http;
+use App\Jobs\ProcessGuestMessage;
 
 class GuestChat extends Component
 {
@@ -12,43 +14,71 @@ class GuestChat extends Component
     public $loading = false;
     public $sessionId;
 
+    protected $listeners = ['echo:guest-chat-{sessionId},guest-message-received' => 'addAiMessage'];
+
     public function mount()
     {
         // Generate a unique session ID for the guest user
         $this->sessionId = session()->getId();
 
-        // Add welcome message in English
+        // Add welcome message in English and Spanish
         $this->messages[] = [
             'sender' => 'ai',
-            'content' => 'Hello! I\'m your virtual assistant. I can help you with general information and answer your questions. For advanced features like custom document analysis, you can [register here](/register).',
+            'content' => '¡Hola! 👋 Soy tu asistente de IA.
+
+            **Estás en modo invitado**, lo que significa que puedes:
+            • Hacer preguntas generales
+            • Obtener información básica
+            • Probar nuestras funciones principales
+
+            **¿Qué hace nuestra plataforma?**
+            Somos una herramienta de IA avanzada que te ayuda con:
+            • 📄 **Análisis de documentos personalizados**
+            • 💬 **Conversaciones persistentes**
+            • 🎯 **Funciones premium**
+            • 🔒 **Privacidad garantizada**
+
+            Para desbloquear todo el potencial, puedes [**registrarte gratis aquí**](/register) 🚀
+
+            ¿En qué puedo ayudarte hoy?',
             'timestamp' => now()->toDateTimeString()
+        ];
+    }
+
+    /**
+     * Get listeners with dynamic session ID
+     */
+    public function getListeners()
+    {
+        return [
+            "echo:guest-chat-{$this->sessionId},guest-message-received" => 'handleAiResponse',
         ];
     }
 
     /**
      * Sends a message from the guest user.
      */
-    public function sendMessage()
-    {
-        if (empty($this->newMessage)) return;
+    // Solo cambiar el método sendMessage() en GuestChat.php
+public function sendMessage()
+{
+    if (empty($this->newMessage)) return;
 
-        $userMessageContent = $this->newMessage;
+    $userMessage = $this->newMessage;
 
-        // Add user message to the conversation
-        $this->messages[] = [
-            'sender' => 'user',
-            'content' => $userMessageContent,
-            'timestamp' => now()->toDateTimeString()
-        ];
+    // Agregar mensaje inmediatamente
+    $this->messages[] = [
+        'sender' => 'user',
+        'content' => $userMessage,
+        'timestamp' => now()->toDateTimeString()
+    ];
 
-        $this->loading = true;
-        $this->newMessage = '';
-        $this->dispatch('messages-updated');
+    $this->newMessage = '';
+    $this->loading = true;
+    $this->dispatch('messages-updated');
 
-        // Call N8N guest workflow
-        $this->callGuestWorkflow($userMessageContent);
-    }
-
+    // ⚡ ESTO ES LO NUEVO - Procesar de forma asíncrona
+    ProcessGuestMessage::dispatch($userMessage, $this->sessionId);
+}
     /**
      * Calls the N8N guest workflow and handles the response.
      */
@@ -68,6 +98,14 @@ class GuestChat extends Component
         } catch (\Exception $e) {
             $this->addErrorMessage();
         }
+    }
+
+    /**
+     * Handle AI response from Pusher
+     */
+    public function handleAiResponse($event)
+    {
+        $this->addAiMessage($event['content']);
     }
 
     /**
@@ -91,7 +129,9 @@ class GuestChat extends Component
     {
         $this->messages[] = [
             'sender' => 'ai',
-            'content' => 'Sorry, an error occurred. Please try again in a few moments.',
+            'content' => 'Lo siento, ocurrió un error. Por favor intenta de nuevo en unos momentos.
+
+Si este problema persiste, te recomendamos [**crear una cuenta gratuita**](/register) para tener acceso a nuestro soporte técnico y funciones más estables. 🔧',
             'timestamp' => now()->toDateTimeString()
         ];
         $this->loading = false;
@@ -105,6 +145,32 @@ class GuestChat extends Component
     {
         $this->messages = [];
         $this->mount(); // Re-add welcome message
+    }
+
+    /**
+     * Suggest user registration
+     */
+    public function suggestRegistration()
+    {
+        $this->messages[] = [
+            'sender' => 'ai',
+            'content' => '🎉 **¡Parece que te gusta nuestra plataforma!**
+
+            Con una **cuenta gratuita** podrías:
+
+            • 💾 **Guardar todas tus conversaciones** - Nunca pierdas una charla importante
+            • 📄 **Subir y analizar documentos** - PDFs, Word, Excel y más
+            • 🎯 **Acceso a funciones premium** - Modelos de IA más avanzados
+            • ⚡ **Sin límites de uso** - Chatea todo lo que quieras
+            • 🔒 **Privacidad garantizada** - Tus datos completamente seguros
+            • 📊 **Dashboard personalizado** - Organiza tus chats y documentos
+
+            [**🚀 Crear cuenta gratuita ahora →**](/register)
+
+            *Solo toma 30 segundos y es completamente gratis.*',
+            'timestamp' => now()->toDateTimeString()
+        ];
+        $this->dispatch('messages-updated');
     }
 
     public function render()

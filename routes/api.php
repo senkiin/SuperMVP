@@ -1,7 +1,9 @@
 <?php
 
 use App\Events\ChatMessageSent;
+use App\Http\Controllers\Api\GuestChatController;
 use App\Events\DocumentStatusUpdated;
+use App\Events\GuestChatMessageReceived;
 use App\Models\Document;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -89,20 +91,12 @@ Route::post('/guest-chat/send', function (Request $request) {
     return $response->json();
 })->name('api.guest-chat.send');
 
-Route::post('/guest-chat/receive', function (Request $request) {
-    if ($request->header('Authorization') !== 'Bearer ' . env('N8N_CALLBACK_SECRET')) {
-        return response()->json(['message' => 'Unauthorized'], 401);
-    }
+Route::post('/guest-chat/receive', function(Request $request) {
+    $content = $request->input('content');
+    $sessionId = $request->input('session_id');
 
-    $request->validate([
-        'session_id' => 'required|string',
-        'message' => 'required|array',
-        'message.sender' => 'required|string|in:ai',
-        'message.content' => 'required|string',
-    ]);
+    // Enviar via Pusher
+    broadcast(new GuestChatMessageReceived($content, $sessionId));
 
-    // Para invitados, emitimos a un canal específico basado en session_id
-    broadcast(new \App\Events\GuestChatMessageReceived($request->session_id, $request->message))->toOthers();
-
-    return response()->json(['message' => 'Guest message broadcasted successfully.']);
-})->name('api.guest-chat.receive');
+    return response()->json(['success' => true]);
+});

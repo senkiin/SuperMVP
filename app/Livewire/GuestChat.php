@@ -1,11 +1,12 @@
 <?php
 
-// Actualización del componente app/Livewire/GuestChat.php
 namespace App\Livewire;
 
 use Livewire\Component;
 use Illuminate\Support\Facades\Http;
-use App\Jobs\ProcessGuestMessage;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class GuestChat extends Component
 {
@@ -13,164 +14,268 @@ class GuestChat extends Component
     public $newMessage = '';
     public $loading = false;
     public $sessionId;
-
-    protected $listeners = ['echo:guest-chat-{sessionId},guest-message-received' => 'addAiMessage'];
+    public $error = null;
 
     public function mount()
     {
-        // Generate a unique session ID for the guest user
         $this->sessionId = session()->getId();
+        $this->addWelcomeMessage();
 
-        // Add welcome message in English and Spanish
+        // Log session info for debugging
+        Log::info('Guest chat mounted', ['session_id' => $this->sessionId]);
+    }
+
+    public function sendMessage()
+    {
+        if (empty($this->newMessage)) return;
+
+        $userMessage = trim($this->newMessage);
+        $messageId = Str::uuid()->toString();
+
+        Log::info('🚀 User sending message', [
+            'message' => $userMessage,
+            'message_id' => $messageId,
+            'session_id' => $this->sessionId
+        ]);
+
+        // 1. Agregar mensaje del usuario inmediatamente
         $this->messages[] = [
+            'id' => $messageId,
+            'sender' => 'user',
+            'content' => $userMessage,
+            'timestamp' => now()->toDateTimeString()
+        ];
+
+        // 2. Limpiar input y mostrar loading
+        $this->newMessage = '';
+        $this->loading = true;
+        $this->error = null;
+
+        // 3. Actualizar UI
+        $this->dispatch('messages-updated');
+
+        // 4. Enviar a n8n via HTTP (no usar el job queue por ahora)
+        $this->sendToN8N($userMessage, $messageId);
+    }
+
+   private function sendToN8N($userMessage, $messageId)
+{
+    $webhookUrl = env('N8N_CHAT_GUEST_WEBHOOK_URL');
+
+    if (!$webhookUrl) {
+        Log::error('N8N webhook URL not configured');
+        $this->addErrorMessage('Chat service not configured. Please check your .env file.');
+        return;
+    }
+
+    Log::info('=== SENDING TO N8N ===', [
+        'url' => $webhookUrl,
+        'message' => $userMessage,
+        'session_id' => $this->sessionId,
+        'message_id' => $messageId
+    ]);
+
+    // SIEMPRE iniciar polling
+    $this->dispatch('start-polling', messageId: $messageId);
+
+    // Enviar en background usando dispatch
+    dispatch(function () use ($webhookUrl, $userMessage, $messageId) {
+        try {
+            Http::timeout(30) // Dar más tiempo a n8n
+                ->withHeaders([
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json'
+                ])
+                ->post($webhookUrl, [
+                    'query' => $userMessage,
+                    'session_id' => $this->sessionId,
+                    'message_id' => $messageId,
+                    'callback_url' => route('api.guest-chat.receive'),
+                    'timestamp' => now()->toDateTimeString()
+                ]);
+
+            Log::info('N8N webhook completed');
+        } catch (\Exception $e) {
+            Log::warning('N8N webhook error (but response may still arrive via callback)', [
+                'error' => $e->getMessage()
+            ]);
+        }
+    })->afterResponse(); // Ejecutar después de enviar respuesta al usuario
+}
+
+    public function checkForResponse($messageId = null)
+    {
+        Log::info('Checking for response', [
+            'session_id' => $this->sessionId,
+            'message_id' => $messageId
+        ]);
+
+        // Buscar en múltiples claves de cache
+        $cacheKeys = [];
+
+        if ($messageId) {
+            $cacheKeys[] = "ai_response_{$this->sessionId}_{$messageId}";
+        }
+        $cacheKeys[] = "ai_response_{$this->sessionId}";
+        $cacheKeys[] = "full_response_{$this->sessionId}";
+
+        foreach ($cacheKeys as $cacheKey) {
+            $response = Cache::get($cacheKey);
+
+            if ($response) {
+                Log::info('✅ Found response in cache', [
+                    'cache_key' => $cacheKey,
+                    'content_preview' => substr(is_string($response) ? $response : json_encode($response), 0, 100)
+                ]);
+
+                // Limpiar cache
+                Cache::forget($cacheKey);
+
+                // Procesar respuesta
+                $content = $response;
+
+                // Si es un array con 'content', extraerlo
+                if (is_array($content) && isset($content['content'])) {
+                    $content = $content['content'];
+                }
+
+                // Si es JSON string, decodificar
+                if (is_string($content) && str_starts_with($content, '{')) {
+                    try {
+                        $decoded = json_decode($content, true);
+                        if (isset($decoded['content'])) {
+                            $content = $decoded['content'];
+                        }
+                    } catch (\Exception $e) {
+                        // Si falla el decode, usar el string tal cual
+                    }
+                }
+
+                // Agregar mensaje de IA
+                $this->messages[] = [
+                    'id' => Str::uuid()->toString(),
+                    'sender' => 'ai',
+                    'content' => $content,
+                    'timestamp' => now()->toDateTimeString()
+                ];
+
+                $this->loading = false;
+                $this->dispatch('messages-updated');
+                $this->dispatch('stop-polling', messageId: $messageId);
+
+                return true;
+            }
+        }
+
+        Log::info('No response found in cache');
+        return false;
+    }
+
+    // Método alternativo usando HTTP polling directo
+    public function pollForResponse($messageId = null)
+    {
+        try {
+            $url = route('api.guest-chat.poll', [
+                'sessionId' => $this->sessionId,
+                'messageId' => $messageId
+            ]);
+
+            $response = Http::get($url);
+
+            if ($response->successful() && $response->json('success')) {
+                $content = $response->json('content');
+
+                $this->messages[] = [
+                    'id' => Str::uuid()->toString(),
+                    'sender' => 'ai',
+                    'content' => $content,
+                    'timestamp' => now()->toDateTimeString()
+                ];
+
+                $this->loading = false;
+                $this->dispatch('messages-updated');
+                $this->dispatch('stop-polling', messageId: $messageId);
+
+                return true;
+            }
+        } catch (\Exception $e) {
+            Log::error('Polling error', ['error' => $e->getMessage()]);
+        }
+
+        return false;
+    }
+
+    private function addWelcomeMessage()
+    {
+        $this->messages[] = [
+            'id' => 'welcome-' . time(),
             'sender' => 'ai',
             'content' => '¡Hola! 👋 Soy tu asistente de IA.
 
-            **Estás en modo invitado**, lo que significa que puedes:
-            • Hacer preguntas generales
-            • Obtener información básica
-            • Probar nuestras funciones principales
+**Estás en modo invitado**, lo que significa que puedes:
+- Hacer preguntas generales
+- Obtener información básica
+- Probar nuestras funciones principales
 
-            **¿Qué hace nuestra plataforma?**
-            Somos una herramienta de IA avanzada que te ayuda con:
-            • 📄 **Análisis de documentos personalizados**
-            • 💬 **Conversaciones persistentes**
-            • 🎯 **Funciones premium**
-            • 🔒 **Privacidad garantizada**
+**¿Qué hace nuestra plataforma?**
+Somos una herramienta de IA avanzada que te ayuda con:
+- 📄 **Análisis de documentos personalizados**
+- 💬 **Conversaciones persistentes**
+- 🎯 **Funciones premium**
+- 🔒 **Privacidad garantizada**
 
-            Para desbloquear todo el potencial, puedes [**registrarte gratis aquí**](/register) 🚀
+Para desbloquear todo el potencial, puedes [**registrarte gratis aquí**](/register) 🚀
 
-            ¿En qué puedo ayudarte hoy?',
+¿En qué puedo ayudarte hoy?',
             'timestamp' => now()->toDateTimeString()
         ];
     }
 
-    /**
-     * Get listeners with dynamic session ID
-     */
-    public function getListeners()
+    private function addErrorMessage($errorText = null)
     {
-        return [
-            "echo:guest-chat-{$this->sessionId},guest-message-received" => 'handleAiResponse',
-        ];
-    }
+        $defaultError = 'Lo siento, ocurrió un error. Por favor intenta de nuevo en unos momentos.
 
-    /**
-     * Sends a message from the guest user.
-     */
-    // Solo cambiar el método sendMessage() en GuestChat.php
-public function sendMessage()
-{
-    if (empty($this->newMessage)) return;
+Si este problema persiste, te recomendamos [**crear una cuenta gratuita**](/register) para tener acceso a nuestro soporte técnico y funciones más estables. 🔧';
 
-    $userMessage = $this->newMessage;
-
-    // Agregar mensaje inmediatamente
-    $this->messages[] = [
-        'sender' => 'user',
-        'content' => $userMessage,
-        'timestamp' => now()->toDateTimeString()
-    ];
-
-    $this->newMessage = '';
-    $this->loading = true;
-    $this->dispatch('messages-updated');
-
-    // ⚡ ESTO ES LO NUEVO - Procesar de forma asíncrona
-    ProcessGuestMessage::dispatch($userMessage, $this->sessionId);
-}
-    /**
-     * Calls the N8N guest workflow and handles the response.
-     */
-    private function callGuestWorkflow($message)
-    {
-        try {
-            $response = Http::timeout(30)->post(env('N8N_CHAT_GUEST_WEBHOOK_URL'), [
-                'query' => $message,
-                'session_id' => $this->sessionId,
-                'callback_url' => route('api.guest-chat.receive'),
-            ]);
-
-            if (!$response->successful()) {
-                $this->addErrorMessage();
-            }
-            // If successful, the response will come via Pusher
-        } catch (\Exception $e) {
-            $this->addErrorMessage();
-        }
-    }
-
-    /**
-     * Handle AI response from Pusher
-     */
-    public function handleAiResponse($event)
-    {
-        $this->addAiMessage($event['content']);
-    }
-
-    /**
-     * Adds an AI response message to the conversation.
-     */
-    public function addAiMessage($content)
-    {
         $this->messages[] = [
+            'id' => 'error-' . time(),
             'sender' => 'ai',
-            'content' => $content,
+            'content' => $errorText ?? $defaultError,
             'timestamp' => now()->toDateTimeString()
         ];
+
         $this->loading = false;
         $this->dispatch('messages-updated');
     }
 
-    /**
-     * Adds an error message when something goes wrong.
-     */
-    private function addErrorMessage()
-    {
-        $this->messages[] = [
-            'sender' => 'ai',
-            'content' => 'Lo siento, ocurrió un error. Por favor intenta de nuevo en unos momentos.
-
-Si este problema persiste, te recomendamos [**crear una cuenta gratuita**](/register) para tener acceso a nuestro soporte técnico y funciones más estables. 🔧',
-            'timestamp' => now()->toDateTimeString()
-        ];
-        $this->loading = false;
-        $this->dispatch('messages-updated');
-    }
-
-    /**
-     * Clears the conversation (for guests).
-     */
     public function clearConversation()
     {
         $this->messages = [];
-        $this->mount(); // Re-add welcome message
+        $this->loading = false;
+        $this->error = null;
+        $this->addWelcomeMessage();
+        $this->dispatch('messages-updated');
     }
 
-    /**
-     * Suggest user registration
-     */
-    public function suggestRegistration()
+    // Método para testing
+    public function testConnection()
     {
-        $this->messages[] = [
-            'sender' => 'ai',
-            'content' => '🎉 **¡Parece que te gusta nuestra plataforma!**
+        try {
+            $testUrl = url('/api/guest-chat/test');
+            $response = Http::get($testUrl);
 
-            Con una **cuenta gratuita** podrías:
-
-            • 💾 **Guardar todas tus conversaciones** - Nunca pierdas una charla importante
-            • 📄 **Subir y analizar documentos** - PDFs, Word, Excel y más
-            • 🎯 **Acceso a funciones premium** - Modelos de IA más avanzados
-            • ⚡ **Sin límites de uso** - Chatea todo lo que quieras
-            • 🔒 **Privacidad garantizada** - Tus datos completamente seguros
-            • 📊 **Dashboard personalizado** - Organiza tus chats y documentos
-
-            [**🚀 Crear cuenta gratuita ahora →**](/register)
-
-            *Solo toma 30 segundos y es completamente gratis.*',
-            'timestamp' => now()->toDateTimeString()
-        ];
-        $this->dispatch('messages-updated');
+            if ($response->successful()) {
+                $this->error = null;
+                Log::info('Connection test successful', $response->json());
+                return true;
+            } else {
+                $this->error = 'Connection test failed';
+                return false;
+            }
+        } catch (\Exception $e) {
+            $this->error = 'Connection test error: ' . $e->getMessage();
+            return false;
+        }
     }
 
     public function render()

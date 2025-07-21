@@ -9,12 +9,12 @@
                     </svg>
                 </div>
                 <h2 class="mt-6 text-4xl font-extrabold text-white">
-                    Crea tu cuenta
+                    Create your account
                 </h2>
                 <p class="mt-2 text-sm text-gray-200">
-                    ¿Ya tienes una cuenta?
+                    Already have an account?
                     <a href="{{ route('login') }}" class="font-medium text-white hover:text-gray-100 underline underline-offset-4 transition-colors duration-200">
-                        Inicia sesión
+                        Sign in
                     </a>
                 </p>
             </div>
@@ -27,13 +27,40 @@
                 <div class="flex items-center justify-center space-x-4 mb-8">
                     <div class="flex items-center">
                         <div class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white text-sm font-bold">1</div>
-                        <span class="ml-2 text-sm text-gray-300">Cuenta</span>
+                        <span class="ml-2 text-sm text-gray-300">Account</span>
                     </div>
                     <div class="w-16 h-0.5 bg-gray-600"></div>
                     <div class="flex items-center">
                         <div class="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center text-gray-400 text-sm font-bold">2</div>
-                        <span class="ml-2 text-sm text-gray-400">Verificar</span>
+                        <span class="ml-2 text-sm text-gray-400">Verify</span>
                     </div>
+                </div>
+<div class="space-y-4">
+                    <a href="{{ route('google.redirect') }}"
+                       class="w-full inline-flex justify-center py-3 px-4 border border-gray-600 rounded-xl shadow-sm bg-gray-800/50 text-sm font-medium text-gray-200 hover:bg-gray-700/50 transition-all duration-200 hover:scale-[1.02]">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        <span class="ml-3">Continue with Google</span>
+                    </a>
+
+                    <a href="{{ route('github.redirect') }}"
+                       class="w-full inline-flex justify-center py-3 px-4 border border-gray-600 rounded-xl shadow-sm bg-gray-800/50 text-sm font-medium text-gray-200 hover:bg-gray-700/50 transition-all duration-200 hover:scale-[1.02]">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.168 6.839 9.492.5.092.682-.217.682-.482 0-.237-.009-.868-.014-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.031-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.378.203 2.398.1 2.651.64.7 1.03 1.595 1.03 2.688 0 3.848-2.338 4.695-4.566 4.942.359.308.678.92.678 1.852 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.001 10.001 0 0022 12c0-5.523-4.477-10-10-10z" clip-rule="evenodd" />
+                        </svg>
+                        <span class="ml-3">Continue with GitHub</span>
+                    </a>
+                </div>
+
+                <!-- Separator -->
+                <div class="relative flex py-2 items-center">
+                    <div class="flex-grow border-t border-gray-600"></div>
+                    <span class="flex-shrink mx-4 text-xs text-gray-400">Or register with your email</span>
+                    <div class="flex-grow border-t border-gray-600"></div>
                 </div>
 
                 <form method="POST" action="{{ route('register') }}" class="space-y-5">
@@ -42,7 +69,7 @@
                     <!-- Name Input -->
                     <div class="group">
                         <label for="name" class="block text-sm font-medium text-gray-200 mb-2 group-focus-within:text-white transition-colors">
-                            {{ __('Nombre Completo') }}
+                            {{ __('Full Name') }}
                         </label>
                         <div class="relative">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -59,7 +86,7 @@
                     <!-- Email Input -->
                     <div class="group">
                         <label for="email" class="block text-sm font-medium text-gray-200 mb-2 group-focus-within:text-white transition-colors">
-                            {{ __('Dirección de Email') }}
+                            {{ __('Email Address') }}
                         </label>
                         <div class="relative">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -69,14 +96,14 @@
                             </div>
                             <input id="email" name="email" type="email" autocomplete="email" required value="{{ old('email') }}"
                                 class="block w-full pl-10 pr-3 py-3 border border-gray-600 rounded-xl bg-gray-800/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 hover:bg-gray-800/70"
-                                placeholder="tu@ejemplo.com">
+                                placeholder="you@example.com">
                         </div>
                     </div>
 
                     <!-- Password Input -->
                     <div class="group">
                         <label for="password" class="block text-sm font-medium text-gray-200 mb-2 group-focus-within:text-white transition-colors">
-                            {{ __('Contraseña') }}
+                            {{ __('Password') }}
                         </label>
                         <div class="relative">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -97,13 +124,13 @@
                                 </div>
                             </div>
                         </div>
-                        <p class="mt-1 text-xs text-gray-400">Debe tener al menos 8 caracteres</p>
+                        <p class="mt-1 text-xs text-gray-400">Must be at least 8 characters</p>
                     </div>
 
                     <!-- Confirm Password -->
                     <div class="group">
                         <label for="password_confirmation" class="block text-sm font-medium text-gray-200 mb-2 group-focus-within:text-white transition-colors">
-                            {{ __('Confirmar Contraseña') }}
+                            {{ __('Confirm Password') }}
                         </label>
                         <div class="relative">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -127,13 +154,13 @@
                                 </div>
                                 <div class="ml-3 text-sm">
                                     <label for="terms" class="text-gray-300">
-                                        Acepto los
+                                        I agree to the
                                         <a href="{{ route('terms.show') }}" target="_blank" class="text-indigo-400 hover:text-indigo-300 underline transition-colors">
-                                            Términos de Servicio
+                                            Terms of Service
                                         </a>
-                                        y la
+                                        and
                                         <a href="{{ route('policy.show') }}" target="_blank" class="text-indigo-400 hover:text-indigo-300 underline transition-colors">
-                                            Política de Privacidad
+                                            Privacy Policy
                                         </a>
                                     </label>
                                 </div>
@@ -150,31 +177,31 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                                 </svg>
                             </span>
-                            {{ __('Crear Cuenta') }}
+                            {{ __('Create Account') }}
                         </button>
                     </div>
 
                     <!-- Benefits -->
                     <div class="mt-6 p-4 bg-indigo-500/10 border border-indigo-500/30 rounded-xl">
-                        <h3 class="text-sm font-medium text-white mb-2">🎉 Lo que obtendrás:</h3>
+                        <h3 class="text-sm font-medium text-white mb-2">🎉 What you'll get:</h3>
                         <ul class="space-y-1 text-xs text-gray-300">
                             <li class="flex items-center">
                                 <svg class="w-3 h-3 mr-2 text-green-400" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                 </svg>
-                                Búsquedas ilimitadas durante la beta
+                                Unlimited lead searches during beta
                             </li>
                             <li class="flex items-center">
                                 <svg class="w-3 h-3 mr-2 text-green-400" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                 </svg>
-                                Campañas de email con IA
+                                AI-powered email campaigns
                             </li>
                             <li class="flex items-center">
                                 <svg class="w-3 h-3 mr-2 text-green-400" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                 </svg>
-                                Soporte prioritario y acceso anticipado
+                                Priority support & early access
                             </li>
                         </ul>
                     </div>
@@ -188,16 +215,16 @@
                         <svg class="w-4 h-4 mr-1 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
                         </svg>
-                        <span>SSL Seguro</span>
+                        <span>SSL Secured</span>
                     </div>
                     <div class="flex items-center">
                         <svg class="w-4 h-4 mr-1 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
                         </svg>
-                        <span>Cumple con GDPR</span>
+                        <span>GDPR Compliant</span>
                     </div>
                 </div>
-                <p>Únete a más de 1,000 empresas que ya usan Elevate Business</p>
+                <p>Join 1,000+ businesses already using Elevate Business</p>
             </div>
         </div>
     </div>

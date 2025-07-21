@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Route;
 use App\Livewire\Admin\ManageCategories;
 use App\Livewire\User\ManageDocuments;
 use App\Livewire\CompanyManager;
+use App\Http\Controllers\GoogleAuthController;
+use App\Http\Controllers\GithubAuthController;
 use App\Livewire\Admin\ManageFormFields;
 
 Route::get('/', function () {
@@ -35,3 +37,8 @@ Route::middleware([
     Route::get('/admin/categories', ManageCategories::class)->name('admin.categories');
     Route::get('/admin/form-fields', ManageFormFields::class)->name('admin.form-fields');
 });
+
+Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirect'])->name('google.redirect');
+Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('google.callback');
+Route::get('/auth/github/redirect', [GithubAuthController::class, 'redirect'])->name('github.redirect');
+Route::get('/auth/github/callback', [GithubAuthController::class, 'callback'])->name('github.callback');

@@ -236,23 +236,33 @@ class GuestChat extends Component
         $this->messages[] = [
             'id' => 'welcome-' . time(),
             'sender' => 'ai',
-            'content' => '¡Hola! 👋 Soy tu asistente de IA.
+            'content' => '👋 Welcome to Elevate Business!
+                You are  currently in guest mode, which lets you:
 
-**Estás en modo invitado**, lo que significa que puedes:
-- Hacer preguntas generales
-- Obtener información básica
-- Probar nuestras funciones principales
+                Ask questions about our platform
+                See how our AI works
+                Get a taste of what we can do for your business
 
-**¿Qué hace nuestra plataforma?**
-Somos una herramienta de IA avanzada que te ayuda con:
-- 📄 **Análisis de documentos personalizados**
-- 💬 **Conversaciones persistentes**
-- 🎯 **Funciones premium**
-- 🔒 **Privacidad garantizada**
+                🚀 What is Elevate Business?
+                We are an AI-powered platform that transforms how you find and connect with clients:
 
-Para desbloquear todo el potencial, puedes [**registrarte gratis aquí**](/register) 🚀
+                🔍 Smart Lead Discovery - Find businesses that need exactly what you offer
+                📊 Gap Analysis - Identify what potential clients are missing
+                ✉️ Custom Proposals - Create personalized offers that solve real problems
+                📧 Complete Email Management - Send, track, and manage outreach in one place
+                🎯 100% Targeted - No spam, only qualified opportunities
 
-¿En qué puedo ayudarte hoy?',
+                💡 Example: If you are a marketing agency, we will find businesses with weak online presence, analyze their specific challenges, and create proposals showing how your services fill those gaps.
+                🎁 Currently in BETA - Limited free access available!
+                👉 Create your free account to unlock:
+
+                Unlimited lead searches
+                Full AI analysis reports
+                Email campaign management
+                Priority support
+                And much more!
+
+                How can I help you explore Elevate Business today? 🤝',
             'timestamp' => now()->toDateTimeString()
         ];
     }
